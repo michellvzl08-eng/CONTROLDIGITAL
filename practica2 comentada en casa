@@ -1,26 +1,39 @@
 // Practica ADC -> DAC con ESP32
 // El DAC2 hace de generador (senoidal de 10 Hz, 0 a 2 V),
 // se lee con el ADC y se vuelve a sacar por el DAC1
+// el led parpadea al mismo tiempo para comprobar que no se usa delay()
 
 // pines
 const int dacGen = 26;   // DAC2, aqui sale la senoidal (en vez del generador)
 const int dacOut = 25;   // DAC1, salida ya muestreada
 const int adcIn  = 34;   // entrada, va conectado al 26 con jumper
 const int adcOut = 35;   // lee lo que sale del 25 para poder graficarlo
+const int ledPin = 2;    // led integrado de la placa
 
 const float f = 10.0;          // frecuencia de la senal en Hz
 const unsigned long Ts = 20;   // periodo de muestreo en ms (aqui se cambia para las pruebas)
+const long interval = 1000;    // parpadeo del led cada 1 s
+
+int ledState = LOW;
 
 // tiempos anteriores para cada tarea (mismo truco que blinkWithoutDelay)
-unsigned long prevGen = 0, prevTs = 0, prevPlot = 0;
+unsigned long prevGen = 0, prevTs = 0, prevPlot = 0, prevLed = 0;
 
 void setup() {
   Serial.begin(115200);       // ojo: poner el plotter tambien en 115200
   analogReadResolution(12);   // ADC de 12 bits -> 0 a 4095
+  pinMode(ledPin, OUTPUT);
 }
 
 void loop() {
   unsigned long now = millis();
+
+  // parpadeo del led, para ver que el programa sigue corriendo
+  if (now - prevLed >= interval) {
+    prevLed = now;
+    ledState = !ledState;
+    digitalWrite(ledPin, ledState);
+  }
 
   // generar la senoidal, se actualiza cada 1 ms para que se vea suave
   // offset de 1 V + amplitud de 1 V => va de 0 a 2 V
