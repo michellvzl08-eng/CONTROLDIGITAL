@@ -1,0 +1,49 @@
+// Practica ADC -> DAC con ESP32
+// El DAC2 hace de generador (senoidal de 10 Hz, 0 a 2 V),
+// se lee con el ADC y se vuelve a sacar por el DAC1
+
+// pines
+const int dacGen = 26;   // DAC2, aqui sale la senoidal (en vez del generador)
+const int dacOut = 25;   // DAC1, salida ya muestreada
+const int adcIn  = 34;   // entrada, va conectado al 26 con jumper
+const int adcOut = 35;   // lee lo que sale del 25 para poder graficarlo
+
+const float f = 10.0;          // frecuencia de la senal en Hz
+const unsigned long Ts = 20;   // periodo de muestreo en ms (aqui se cambia para las pruebas)
+
+// tiempos anteriores para cada tarea (mismo truco que blinkWithoutDelay)
+unsigned long prevGen = 0, prevTs = 0, prevPlot = 0;
+
+void setup() {
+  Serial.begin(115200);       // ojo: poner el plotter tambien en 115200
+  analogReadResolution(12);   // ADC de 12 bits -> 0 a 4095
+}
+
+void loop() {
+  unsigned long now = millis();
+
+  // generar la senoidal, se actualiza cada 1 ms para que se vea suave
+  // offset de 1 V + amplitud de 1 V => va de 0 a 2 V
+  if (now - prevGen >= 1) {
+    prevGen = now;
+    float v = 1.0 + 1.0 * sin(2 * PI * f * now / 1000.0);
+    dacWrite(dacGen, v * 255 / 3.3);   // pasar de volts a valor del DAC (8 bits)
+  }
+
+  // muestreo: cada Ts se lee el ADC y se manda al DAC
+  if (now - prevTs >= Ts) {
+    prevTs = now;
+    int adcValue = analogRead(adcIn);
+    // 0.06226 = 116/1863, sale de convertir 12 bits a 8 bits (lo del pizarron)
+    dacWrite(dacOut, adcValue * 0.06226);
+  }
+
+  // mandar las dos senales al serial plotter en volts, cada 5 ms
+  if (now - prevPlot >= 5) {
+    prevPlot = now;
+    Serial.print("entrada:");
+    Serial.print(analogRead(adcIn) * 3.3 / 4095);
+    Serial.print(",salida:");
+    Serial.println(analogRead(adcOut) * 3.3 / 4095);
+  }
+}
