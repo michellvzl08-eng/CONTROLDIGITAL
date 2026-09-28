@@ -1,0 +1,40 @@
+const int dacGen = 26;   // DAC2: simula el generador
+const int dacOut = 25;   // DAC1: salida reconstruida
+const int adcIn  = 34;   // entrada (lo que antes venía del generador)
+const int adcOut = 35;   // lee la salida para graficarla
+
+const float f = 10.0;          // Hz
+const unsigned long Ts = 20;   // ms, periodo de muestreo
+unsigned long prevGen = 0, prevTs = 0, prevPlot = 0;
+
+void setup() {
+  Serial.begin(115200);
+  analogReadResolution(12);
+}
+
+void loop() {
+  unsigned long now = millis();
+
+  // 1) "Generador": 10 Hz, 0 a 2 V (offset 1 V, amplitud 1 V pico)
+  if (now - prevGen >= 1) {
+    prevGen = now;
+    float v = 1.0 + 1.0 * sin(2 * PI * f * now / 1000.0);
+    dacWrite(dacGen, v * 255 / 3.3);
+  }
+
+  // 2) La práctica: muestrear cada Ts y sacar por el DAC
+  if (now - prevTs >= Ts) {
+    prevTs = now;
+    int adcValue = analogRead(adcIn);
+    dacWrite(dacOut, adcValue * 0.06226);   // 255/4095, tu factor del pizarrón
+  }
+
+  // 3) "Osciloscopio": imprime ambas señales en volts
+  if (now - prevPlot >= 5) {
+    prevPlot = now;
+    Serial.print("entrada:");
+    Serial.print(analogRead(adcIn) * 3.3 / 4095);
+    Serial.print(",salida:");
+    Serial.println(analogRead(adcOut) * 3.3 / 4095);
+  }
+}
